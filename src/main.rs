@@ -4,75 +4,8 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::process::Command;
 
-#[derive(Debug)]
-#[derive(PartialEq)]
-enum TokenType {
-    Return,
-    IntegerLit,
-    Semicolon,
-}
-
-#[derive(Debug)]
-#[derive(PartialEq)]
-struct Token {
-    token: TokenType,
-    info: String,
-}
-
-fn tokenise(source: &str) -> Vec<Token> {
-    let mut tokens: Vec<Token> = vec!();
-    let mut buffer = String::new();
-
-    for (_i, c) in source.chars().enumerate() {
-        if buffer.starts_with(|c: char| c.is_alphabetic()){
-            if !c.is_alphanumeric() {
-                // add the token
-                if let Some(token) = finish_token(&buffer) {
-                    tokens.push(token);
-                }
-
-                buffer = String::new();
-            }
-        }
-
-        if buffer.starts_with(|c: char| c.is_numeric()){
-            if !c.is_numeric() {
-                // add the token
-                if let Some(token) = finish_token(&buffer) {
-                    tokens.push(token);
-                }
-
-                buffer = String::new();
-            }
-        }
-
-        if c == ';' {
-            tokens.push(Token{token: TokenType::Semicolon, info: String::new()});
-
-            continue;
-        }
-
-        if !(c.is_whitespace()) {
-            buffer.push(c);
-        }
-    }
-    return tokens;
-}
-
-fn finish_token(buffer: &str) -> Option<Token> {
-
-    if buffer.starts_with(|c: char| c.is_numeric()) {
-        let token = Token{token: TokenType::IntegerLit, info: buffer.to_string()};
-        return Some(token);
-    } else {
-        return match buffer {
-            "return" => Some(Token{token: TokenType::Return, info: "".to_string()}),
-            _ => None,
-        };
-    }
-
-}
-
+mod tokenise;
+use tokenise::{Token, TokenType, tokenise};
 
 fn tokens_to_asm(tokens: &Vec<Token>) -> String {
     let mut asm = "global _start\n_start:\n".to_string();
@@ -81,16 +14,13 @@ fn tokens_to_asm(tokens: &Vec<Token>) -> String {
     while i < tokens.len() {
         let token = &tokens[i];
         
-        if token.token == TokenType::Return {
-            if i + 1 < tokens.len() {
-                if tokens[i + 1].token == TokenType::IntegerLit {
-                    if i + 2 < tokens.len() {
-                        if tokens[i + 2].token == TokenType::Semicolon {
-                            asm.push_str("    mov rax, 60\n");
-                            asm.push_str(&format!("    mov rdi, {}\n", tokens[i + 1].info));
-                            asm.push_str("    syscall\n")
-                        }
-                    }
+        if token.token == TokenType::Exit {
+            if i + 4 < tokens.len() {
+                if tokens[i + 1].token == TokenType::ParenOpen && tokens[i+2].token == TokenType::IntegerLit && tokens[i+3].token == TokenType::ParenClose 
+                && tokens[i+4].token == TokenType::Semicolon {
+                    asm.push_str("    mov rax, 60\n");
+                    asm.push_str(&format!("    mov rdi, {}\n", tokens[i + 2].info));
+                    asm.push_str("    syscall\n")
                 }
             }
         }
@@ -124,7 +54,9 @@ fn main() {
     }
 
     let tokenised = tokenise(&s);
+    dbg!(&tokenised);
     let asm = tokens_to_asm(&tokenised);
+    dbg!(&asm);
 
     let path = &format!("{}.asm", out_path);
     let Ok(mut output_file) = File::create(path) else {
@@ -138,6 +70,9 @@ fn main() {
         .arg("-c")
         .arg(&format!("nasm -felf64 {}.asm -o {}.o", out_path, out_path))
         .output();
+
+    //dbg!(a);
+    
     
     let _ = Command::new("sh")
         .arg("-c")
