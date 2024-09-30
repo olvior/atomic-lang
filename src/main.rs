@@ -6,7 +6,7 @@ use std::process::Command;
 
 mod tokenise;
 use code_gen::code_gen;
-use tokenise::{Token, TokenType, tokenise};
+use tokenise::{Token, TokenType, Tokeniser};
 
 mod parser;
 use parser::parse;
@@ -33,11 +33,12 @@ fn main() {
         Ok(_) => (),
     }
 
-    let tokenised = tokenise(&s);
+    let mut tokeniser = Tokeniser{ source: s, index: 0};
+    let tokenised = tokeniser.tokenise();
+    dbg!(&tokenised);
     let Some(parse_tree) = parse(&tokenised) else { println!("Could not parse the code!"); return; };
     let asm = code_gen(&parse_tree);
     
-    dbg!(&tokenised);
     dbg!(&parse_tree);
     dbg!(&asm);
 

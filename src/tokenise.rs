@@ -10,6 +10,7 @@ pub enum TokenType {
     IntegerLit,
 
     Variable,
+    Identifier,
 
     Semicolon,
     NoToken,
@@ -23,58 +24,84 @@ pub struct Token {
     pub info: String,
 }
 
-pub fn tokenise(source: &str) -> Vec<Token> {
-    let mut tokens: Vec<Token> = vec!();
-    let mut buffer = String::new();
+pub struct Tokeniser {
+    pub source: String,
+    pub index: usize,
+}
 
-    for (_i, c) in source.chars().enumerate() {
-        if buff_is_finished(&buffer, c) {
-            if let Some(token) = finish_token(&buffer) {
-                tokens.push(token);
+impl Tokeniser {
+    pub fn tokenise(&mut self) -> Vec<Token> {
+        let mut tokens: Vec<Token> = vec!();
+
+        while self.index < self.source.len() {
+            let Some(current_word) = self.get_next_word() else { self.index += 1; continue; };
+
+            let mut token_type = match current_word.as_str() {
+                ";" => TokenType::Semicolon,
+                "(" => TokenType::ParenOpen,
+                ")" => TokenType::ParenClose,
+
+                "exit" => TokenType::Exit,
+
+                _ => TokenType::Identifier,
+            };
+
+            if token_type == TokenType::Identifier {
+                if current_word.chars().nth(0).expect("Word was empty").is_numeric() {
+                    token_type = TokenType::IntegerLit;
+                } else {
+                    token_type = TokenType::Variable;
+                }
             }
-            buffer = String::new();
+
+            tokens.push(Token { token: token_type, info: current_word });
         }
 
-        let simple_token: TokenType = match c {
-            ';' => TokenType::Semicolon,
-            '(' => TokenType::ParenOpen,
-            ')' => TokenType::ParenClose,
-            _   => TokenType::NoToken,
-        };
+        return tokens;
+    }
 
-        if simple_token != TokenType::NoToken {
-            tokens.push(Token{token: simple_token, info: String::new()});
-            continue;
-        }
-
-
-
-        if !(c.is_whitespace()) {
-            buffer.push(c);
+    fn skip_whitespace(&mut self) {
+        while  self.index < self.source.len()
+            && self.source.chars().nth(self.index).expect("Failed to get string").is_whitespace()
+        {
+            self.index += 1;
         }
     }
-    return tokens;
-}
 
-fn finish_token(buffer: &str) -> Option<Token> {
-    if buffer.starts_with(|c: char| c.is_numeric()) {
-        let token = Token{token: TokenType::IntegerLit, info: buffer.to_string()};
-        return Some(token);
-    } else {
-        return match buffer {
-            "exit" => Some(Token{token: TokenType::Exit, info: "".to_string()}),
-            _ => Some(Token{ token: TokenType::Variable, info: buffer.to_string()}),
-        };
+    fn get_next_word(&mut self) -> Option<String> {
+        let first_char = self.source.chars().nth(self.index).expect("Could not index string!");
+        let mut word = String::new();
+
+        self.skip_whitespace();
+
+        for c in self.source.get(self.index..).expect("Could not collect source into chars").chars() {
+            if first_char.is_alphabetic() {
+                if !c.is_alphanumeric() {
+                    break;
+                }
+            }
+            else if first_char.is_numeric() {
+                if !c.is_numeric() {
+                    break;
+                }
+            } else {
+                self.index += 1;
+                word.push(c);
+                break;
+            }
+            
+            self.index += 1;
+            word.push(c);
+        }
+
+        self.skip_whitespace();
+
+        if word == String::new() {
+            return None;
+        }
+        
+
+        return Some(word);
     }
-}
-
-fn buff_is_finished(buffer: &str, c: char) -> bool {
-    if buffer.starts_with(|c: char| c.is_numeric()) {
-        if c.is_numeric() { return false; } else { return true; }
-    } else if buffer.starts_with(|c: char| c.is_alphabetic()) {
-        if c.is_alphanumeric() { return false; } else { return true; }
-    }
-
-    return false;
 }
 
