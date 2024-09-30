@@ -5,33 +5,13 @@ use std::path::Path;
 use std::process::Command;
 
 mod tokenise;
+use code_gen::code_gen;
 use tokenise::{Token, TokenType, tokenise};
 
-fn tokens_to_asm(tokens: &Vec<Token>) -> String {
-    let mut asm = "global _start\n_start:\n".to_string();
+mod parser;
+use parser::parse;
 
-    let mut i = 0;
-    while i < tokens.len() {
-        let token = &tokens[i];
-        
-        if token.token == TokenType::Exit {
-            if i + 4 < tokens.len() {
-                if tokens[i + 1].token == TokenType::ParenOpen && tokens[i+2].token == TokenType::IntegerLit && tokens[i+3].token == TokenType::ParenClose 
-                && tokens[i+4].token == TokenType::Semicolon {
-                    asm.push_str("    mov rax, 60\n");
-                    asm.push_str(&format!("    mov rdi, {}\n", tokens[i + 2].info));
-                    asm.push_str("    syscall\n")
-                }
-            }
-        }
-
-        i += 1;
-    }
-
-
-    return asm;
-}
-
+mod code_gen;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -49,13 +29,16 @@ fn main() {
 
     let mut s = String::new();
     match file.read_to_string(&mut s) {
-        Err(err) => panic!("Could not read {} due to {}", file_path, err),
+        Err(err) => { println!("Could not read {} due to {}", file_path, err); return; },
         Ok(_) => (),
     }
 
     let tokenised = tokenise(&s);
+    let Some(parse_tree) = parse(&tokenised) else { println!("Could not parse the code!"); return; };
+    let asm = code_gen(&parse_tree);
+    
     dbg!(&tokenised);
-    let asm = tokens_to_asm(&tokenised);
+    dbg!(&parse_tree);
     dbg!(&asm);
 
     let path = &format!("{}.asm", out_path);

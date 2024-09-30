@@ -1,5 +1,6 @@
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub enum TokenType {
     Exit,
 
@@ -16,6 +17,7 @@ pub enum TokenType {
 
 #[derive(Debug)]
 #[derive(PartialEq)]
+#[derive(Clone)]
 pub struct Token {
     pub token: TokenType,
     pub info: String,
