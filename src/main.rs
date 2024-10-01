@@ -9,7 +9,7 @@ use code_gen::code_gen;
 use tokenise::{Token, TokenType, Tokeniser};
 
 mod parser;
-use parser::parse;
+use parser::Parser;
 
 mod code_gen;
 
@@ -36,7 +36,9 @@ fn main() {
     let mut tokeniser = Tokeniser{ source: s, index: 0};
     let tokenised = tokeniser.tokenise();
     dbg!(&tokenised);
-    let Some(parse_tree) = parse(&tokenised) else { println!("Could not parse the code!"); return; };
+    let mut parser = Parser { tokens: tokenised, index: 0};
+    let parse_tree = parser.parse();
+
     let asm = code_gen(&parse_tree);
     
     dbg!(&parse_tree);

@@ -4,12 +4,14 @@
 pub enum TokenType {
     Exit,
 
+    AssignEq,
+
     ParenOpen,
     ParenClose,
 
+    IntType,
     IntegerLit,
 
-    Variable,
     Identifier,
 
     Semicolon,
@@ -35,22 +37,26 @@ impl Tokeniser {
 
         while self.index < self.source.len() {
             let Some(current_word) = self.get_next_word() else { self.index += 1; continue; };
+            println!("{}", current_word);
 
             let mut token_type = match current_word.as_str() {
                 ";" => TokenType::Semicolon,
                 "(" => TokenType::ParenOpen,
                 ")" => TokenType::ParenClose,
+                "=" => TokenType::AssignEq,
 
                 "exit" => TokenType::Exit,
 
-                _ => TokenType::Identifier,
+                "int" => TokenType::IntType,
+
+                _ => TokenType::NoToken,
             };
 
-            if token_type == TokenType::Identifier {
+            if token_type == TokenType::NoToken {
                 if current_word.chars().nth(0).expect("Word was empty").is_numeric() {
                     token_type = TokenType::IntegerLit;
                 } else {
-                    token_type = TokenType::Variable;
+                    token_type = TokenType::Identifier;
                 }
             }
 
@@ -69,10 +75,11 @@ impl Tokeniser {
     }
 
     fn get_next_word(&mut self) -> Option<String> {
+        self.skip_whitespace();
+
         let first_char = self.source.chars().nth(self.index).expect("Could not index string!");
         let mut word = String::new();
 
-        self.skip_whitespace();
 
         for c in self.source.get(self.index..).expect("Could not collect source into chars").chars() {
             if first_char.is_alphabetic() {
@@ -94,13 +101,13 @@ impl Tokeniser {
             word.push(c);
         }
 
-        self.skip_whitespace();
 
         if word == String::new() {
             return None;
         }
         
 
+        self.skip_whitespace();
         return Some(word);
     }
 }
