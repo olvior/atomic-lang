@@ -1,3 +1,5 @@
+use crate::exit_message;
+
 #[derive(Debug)]
 #[derive(PartialEq)]
 #[derive(Clone)]
@@ -55,8 +57,11 @@ impl Tokeniser {
             if token_type == TokenType::NoToken {
                 if current_word.chars().nth(0).expect("Word was empty").is_numeric() {
                     token_type = TokenType::IntegerLit;
-                } else {
+                } else if current_word.chars().nth(0).expect("Word was empty").is_alphabetic() {
                     token_type = TokenType::Identifier;
+                }
+                else {
+                    exit_message(&format!("Could not tokenise {}", current_word));
                 }
             }
 

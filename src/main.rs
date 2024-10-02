@@ -65,3 +65,8 @@ fn main() {
         .arg(&format!("ld -o {} {}.o", out_path, out_path))
         .output();
 }
+
+fn exit_message(message: &str) {
+    println!("{}", message);
+    std::process::exit(127)
+}

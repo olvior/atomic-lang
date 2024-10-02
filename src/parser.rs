@@ -1,4 +1,4 @@
-use crate::{TokenType, Token};
+use crate::{TokenType, Token, exit_message};
 
 #[derive(Debug)]
 pub enum NodeStatements {
@@ -42,9 +42,9 @@ impl Parser {
             let token = &self.tokens[self.index];
 
             let statement = match token.token {
-                TokenType::Exit => { NodeStatements::Exit(self.parse_exit()) }
-                TokenType::IntType => { NodeStatements::Declare(self.parse_int_assign()) }
-                _ => { return program; }
+                TokenType::Exit => NodeStatements::Exit(self.parse_exit()),
+                TokenType::IntType => NodeStatements::Declare(self.parse_int_assign()),
+                _ => { dbg!(token); exit_message("Invalid expression"); println!("happy"); return program; }
             };
 
             program.statements.push(statement);
@@ -55,13 +55,13 @@ impl Parser {
 
     fn parse_exit(&mut self) -> NodeStmtExit {
         if self.require_token(1, "Could not parse exit").token != TokenType::ParenOpen {
-            panic!("Expected parenthesis");
+            exit_message("Expected parenthesis");
         }
         if self.require_token(3, "Could not parse exit").token != TokenType::ParenClose {
-            panic!("Expected closing parenthesis");
+            exit_message("Expected closing parenthesis");
         }
         if self.require_token(4, "Could not parse exit").token != TokenType::Semicolon {
-            panic!("Expected semicolon");
+            exit_message("Expected semicolon");
         }
 
         // account for exit(
@@ -70,20 +70,20 @@ impl Parser {
         let expr = self.parse_expr();
 
         // account for );
-        self.index += 1;
+        self.index += 2;
 
         return NodeStmtExit { expression: expr };
     }
     
     fn parse_int_assign(&mut self) -> NodeStmtDeclare {
         if self.require_token(1, "Could not parse declaration").token != TokenType::Identifier {
-            panic!("Expected identifier");
+            exit_message("Expected identifier");
         }
         if self.require_token(2, "Could not parse declaration").token != TokenType::AssignEq {
-            panic!("Expected closing parenthesis");
+            exit_message("Expected closing parenthesis");
         }
         if self.require_token(4, "Could not parse declaration").token != TokenType::Semicolon {
-            panic!("Expected semicolon");
+            exit_message("Expected semicolon");
         }
 
         let identifier = self.require_token(1, "Could not parse declaration");
@@ -103,7 +103,7 @@ impl Parser {
     fn parse_expr(&mut self) -> NodeExpr {
         let expr_token = self.require_token(0, "Could not parse expression");
         if expr_token.token != TokenType::IntegerLit && expr_token.token != TokenType::Identifier {
-            panic!("Could not parse the expression, expected an identifier or integer literal");
+            exit_message("Could not parse the expression, expected an identifier or integer literal");
         }
 
         self.index += 1;
