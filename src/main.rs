@@ -5,13 +5,13 @@ use std::path::Path;
 use std::process::Command;
 
 mod tokenise;
-use code_gen::code_gen;
 use tokenise::{Token, TokenType, Tokeniser};
 
 mod parser;
 use parser::Parser;
 
 mod code_gen;
+use code_gen::CodeGen;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -38,11 +38,12 @@ fn main() {
     dbg!(&tokenised);
     let mut parser = Parser { tokens: tokenised, index: 0};
     let parse_tree = parser.parse();
-
-    let asm = code_gen(&parse_tree);
-    
     dbg!(&parse_tree);
-    dbg!(&asm);
+
+    let mut generator = CodeGen::new();
+    generator.generate(&parse_tree);
+    let asm = generator.asm;
+    print!("{}", asm);
 
     let path = &format!("{}.asm", out_path);
     let Ok(mut output_file) = File::create(path) else {

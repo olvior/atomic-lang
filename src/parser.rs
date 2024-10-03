@@ -26,7 +26,7 @@ pub struct NodeStmtDeclare {
 // smaller
 #[derive(Debug)]
 pub struct NodeExpr {
-    pub int_lit: Token,
+    pub expr: Token,
 }
 
 pub struct Parser {
@@ -108,7 +108,7 @@ impl Parser {
 
         self.index += 1;
 
-        return NodeExpr { int_lit: expr_token };
+        return NodeExpr { expr: expr_token };
     }
 
     fn require_token(&self, offset: usize, message: &str) -> Token {
