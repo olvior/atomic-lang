@@ -34,7 +34,10 @@ impl CodeGen {
                 },
                 NodeStatements::Exit(exit_stmt) => {
                     self.gen_exit(&exit_stmt);
-                }
+                },
+                NodeStatements::Set(set_stmt) => {
+                    self.gen_set(&set_stmt);
+                },
 
                 //_ => { println!("Unable to generate code for {:?}", stmt) }
             }
@@ -55,6 +58,19 @@ impl CodeGen {
 
         self.gen_expression(&declare_stmt.expression);
 
+    }
+
+    fn gen_set(&mut self, set_stmt: &NodeStmtSet) {
+        if !self.var_declared(&set_stmt.identifier) {
+            exit_message(&format!("Variable referenced before assignment {}", set_stmt.identifier.info));
+            return;
+        }
+
+        self.gen_expression(&set_stmt.expression);
+        self.pop("rax");
+
+        let var_ptr = self.get_var_ptr(&set_stmt.identifier);
+        self.asm.push_str(&format!("    mov [rsp + {}], rax\n", (self.stack_ptr - var_ptr) * 8));
     }
 
     fn gen_exit(&mut self, exit_stmt: &NodeStmtExit) {

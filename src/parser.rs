@@ -4,6 +4,7 @@ use crate::{TokenType, Token, exit_message};
 pub enum NodeStatements {
     Exit(NodeStmtExit),
     Declare(NodeStmtDeclare),
+    Set(NodeStmtSet),
 }
 
 #[derive(Debug)]
@@ -19,6 +20,12 @@ pub struct NodeStmtExit {
 
 #[derive(Debug)]
 pub struct NodeStmtDeclare {
+    pub identifier: Token,
+    pub expression: NodeExpr,
+}
+
+#[derive(Debug)]
+pub struct NodeStmtSet {
     pub identifier: Token,
     pub expression: NodeExpr,
 }
@@ -44,6 +51,7 @@ impl Parser {
             let statement = match token.token {
                 TokenType::Exit => NodeStatements::Exit(self.parse_exit()),
                 TokenType::IntType => NodeStatements::Declare(self.parse_int_assign()),
+                TokenType::Identifier => NodeStatements::Set(self.parse_set_var()),
                 _ => { dbg!(token); exit_message("Invalid expression"); println!("happy"); return program; }
             };
 
@@ -88,7 +96,7 @@ impl Parser {
 
         let identifier = self.require_token(1, "Could not parse declaration");
 
-        // account for name =
+        // account for int name =
         self.index += 3;
 
         let expr = self.parse_expr();
@@ -97,6 +105,31 @@ impl Parser {
         self.index += 1;
 
         return NodeStmtDeclare { identifier, expression: expr };
+    }
+
+    fn parse_set_var(&mut self) -> NodeStmtSet {
+        if self.require_token(1, "Could not parse set").token != TokenType::AssignEq {
+            exit_message("Expected equal sign");
+        }
+        if self.require_token(2, "Could not parse set").token != TokenType::IntegerLit
+        && self.require_token(2, "Could not parse set").token != TokenType::Identifier {
+            exit_message("Expected expression");
+        }
+        if self.require_token(3, "Could not parse set").token != TokenType::Semicolon {
+            exit_message("Expected semicolon");
+        }
+
+        let identifier = self.require_token(0, "Could not parse set");
+
+        // account for name =
+        self.index += 2;
+
+        let expr = self.parse_expr();
+
+        // account for ;
+        self.index += 1;
+
+        return NodeStmtSet { identifier, expression: expr };
     }
 
 
