@@ -7,7 +7,7 @@ use std::process::Command;
 mod tokenise;
 use tokenise::{Token, TokenType, Tokeniser};
 
-mod parser;
+pub mod parser;
 use parser::Parser;
 
 mod code_gen;
@@ -15,23 +15,22 @@ use code_gen::CodeGen;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() < 3 {
-        println!("Useage: ./lithium path/to/file.li path/to/out");
-        return;
-    }
+    // if args.len() < 3 {
+    //     println!("Useage: ./lithium path/to/file.li path/to/out");
+    //     return;
+    // }
 
-    let file_path = &args[1];
-    let out_path = &args[2];
+    // let file_path = &args[1];
+    // let out_path = &args[2];
+    let file_path = "test.li";
+    let out_path = "bin/test";
     
     let path = Path::new(file_path);
 
     let Ok(mut file) = File::open(path) else { println!("Could not find {}", file_path); return; };
 
     let mut s = String::new();
-    match file.read_to_string(&mut s) {
-        Err(err) => { println!("Could not read {} due to {}", file_path, err); return; },
-        Ok(_) => (),
-    }
+    if let Err(err) = file.read_to_string(&mut s) { println!("Could not read {} due to {}", file_path, err); return; }
 
     let mut tokeniser = Tokeniser{ source: s, index: 0};
     let tokenised = tokeniser.tokenise();

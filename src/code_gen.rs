@@ -1,9 +1,13 @@
-use std::collections::HashMap;
+use crate::code_gen::math::OperationType;
+
+use crate::parser::MathValue;
+
+use std::{borrow::Borrow, collections::HashMap};
 
 use crate::{
     exit_message,
     parser::*,
-    tokenise::{TokenType, Token},
+    tokenise::Token,
 };
 
 pub struct CodeGen {
@@ -74,8 +78,6 @@ impl CodeGen {
     }
 
     fn gen_exit(&mut self, exit_stmt: &NodeStmtExit) {
-        
-
         self.gen_expression(&exit_stmt.expression);
 
         self.asm.push_str("    mov rax, 60\n");
@@ -85,14 +87,58 @@ impl CodeGen {
 
     }
 
-    fn gen_expression(&mut self, expr: &NodeExpr) {
-        match expr.expr.token {
-            TokenType::IntegerLit => self.push(&expr.expr.info),
-            TokenType::Identifier => self.push_var_value(&expr.expr),
+    fn gen_expression(&mut self, expr: &MathValue) {
+        match expr {
+            MathValue::Integer(integer) => self.push(&integer.info),
+            MathValue::Identifier(ident) => self.push_var_value(&ident),
 
-            _ => { exit_message("Could not generate asm from expression"); return; }
+            MathValue::Operation(oper) => {
+                match oper.borrow() {
+                    OperationType::Add(add) => {
+                        self.gen_expression(&add.value_1);
+                        self.gen_expression(&add.value_2);
+
+                        self.pop("rax");
+                        self.pop("rdi");
+
+                        self.asm.push_str("    add rax, rdi\n");
+
+                        self.push("rax");
+                    },
+
+                    OperationType::Sub(sub) => {
+                        self.gen_expression(&sub.value_1);
+                        self.gen_expression(&sub.value_2);
+
+                        self.pop("rax");
+                        self.pop("rdi");
+
+                        self.asm.push_str("    sub rdi, rax\n");
+
+                        self.push("rdi");
+                    },
+                    
+                    OperationType::Mult(mult) => {
+                        // i think this works, multiplication is strange though
+                        self.gen_expression(&mult.value_1);
+                        self.gen_expression(&mult.value_2);
+
+                        self.pop("rax");
+                        self.pop("rdi");
+
+                        self.asm.push_str("    mul rdi\n");
+
+                        self.push("rax");
+                    },
+
+                    _ => todo!(),
+                }
+            },
+
+           _ => { exit_message("Could not generate asm from expression"); return; }
         }
     }
+
 
     fn push(&mut self, reg_or_lit: &str) {
         self.stack_ptr += 1;

@@ -10,6 +10,10 @@ pub enum TokenType {
 
     ParenOpen,
     ParenClose,
+    Plus,
+    Minus,
+    Star,
+    ForwardsSlash,
 
     IntType,
     IntegerLit,
@@ -46,6 +50,12 @@ impl Tokeniser {
                 "(" => TokenType::ParenOpen,
                 ")" => TokenType::ParenClose,
                 "=" => TokenType::AssignEq,
+
+                "+" => TokenType::Plus,
+                "-" => TokenType::Minus,
+                "*" => TokenType::Star,
+                "/" => TokenType::ForwardsSlash,
+
 
                 "exit" => TokenType::Exit,
 
