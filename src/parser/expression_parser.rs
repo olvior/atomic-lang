@@ -79,6 +79,9 @@ impl ExpressionParser {
     }
 
     fn parse_factor(&mut self, tokens: &[Token]) -> MathValue {
+        if self.index >= tokens.len() {
+            panic!("Expected factor");
+        }
         let token = &tokens[self.index];
         self.index += 1;
 
@@ -90,9 +93,8 @@ impl ExpressionParser {
         }
         else if token.token == TokenType::ParenOpen {
             let math_value = self.parse_sum(tokens);
-            let token = &tokens[self.index];
 
-            if token.token == TokenType::ParenClose {
+            if self.index < tokens.len() && tokens[self.index].token == TokenType::ParenClose {
                 self.index += 1;
                 return math_value;
             } else {

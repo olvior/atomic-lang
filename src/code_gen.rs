@@ -171,17 +171,13 @@ impl CodeGen {
 
     fn get_var_ptr(&self, identifier: &Token) -> isize {
         let Some(value) = self.variables.get_key_value(&identifier.info) else {
-            exit_message(&format!("Unknown identifier {}", identifier.info));
-            panic!();
+            panic!("Unknown identifier {}", identifier.info);
         };
     
         return *value.1;
     }
 
     fn push_var_value(&mut self, identifier: &Token) {
-        if !self.var_declared(identifier) {
-            return;
-        }
         let var_ptr = self.get_var_ptr(&identifier);
         self.asm.push_str(&format!("    mov rax, QWORD [rsp + {}]\n", (self.stack_ptr - var_ptr) * 8));
         
