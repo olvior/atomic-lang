@@ -10,6 +10,8 @@ pub use math::MathValue;
 #[derive(Debug)]
 pub enum NodeStatements {
     Exit(NodeStmtExit),
+    PutChar(NodeStmtPutChar),
+
     Declare(NodeStmtDeclare),
     Set(NodeStmtSet),
 }
@@ -22,6 +24,11 @@ pub struct NodeProgram {
 // statements
 #[derive(Debug)]
 pub struct NodeStmtExit {
+    pub expression: MathValue,
+}
+
+#[derive(Debug)]
+pub struct NodeStmtPutChar {
     pub expression: MathValue,
 }
 
@@ -51,6 +58,7 @@ impl Parser {
 
             let statement = match token.token {
                 TokenType::Exit => NodeStatements::Exit(self.parse_exit()),
+                TokenType::PutChar => NodeStatements::PutChar(self.parse_putchar()),
                 TokenType::IntType => NodeStatements::Declare(self.parse_int_assign()),
                 TokenType::Identifier => NodeStatements::Set(self.parse_set_var()),
                 _ => { dbg!(token); exit_message("Invalid expression"); println!("happy"); return program; }
@@ -84,6 +92,30 @@ impl Parser {
 
         return NodeStmtExit { expression: expr };
     }
+    
+    fn parse_putchar(&mut self) -> NodeStmtPutChar {
+        if self.require_token(1, "Could not parse putchar").token != TokenType::ParenOpen {
+            exit_message("Expected parenthesis");
+        }
+
+        // account for putchar(
+        self.index += 2;
+
+        let expr = self.parse_expr();
+        
+        if self.require_token(0, "Could not parse putchar").token != TokenType::ParenClose {
+            exit_message("Expected closing parenthesis");
+        }
+        if self.require_token(1, "Could not parse putchar").token != TokenType::Semicolon {
+            exit_message("Expected semicolon");
+        }
+
+        // account for );
+        self.index += 2;
+
+        return NodeStmtPutChar { expression: expr };
+    }
+    
     
     fn parse_int_assign(&mut self) -> NodeStmtDeclare {
         if self.require_token(1, "Could not parse declaration").token != TokenType::Identifier {

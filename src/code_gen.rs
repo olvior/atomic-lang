@@ -39,6 +39,9 @@ impl CodeGen {
                 NodeStatements::Exit(exit_stmt) => {
                     self.gen_exit(&exit_stmt);
                 },
+                NodeStatements::PutChar(putchar_stmt) => {
+                    self.gen_putchar(&putchar_stmt);
+                }
                 NodeStatements::Set(set_stmt) => {
                     self.gen_set(&set_stmt);
                 },
@@ -84,7 +87,18 @@ impl CodeGen {
         self.pop("rdi");
 
         self.asm.push_str("    syscall\n");
+    }
+    
+    fn gen_putchar(&mut self, putchar_stmt: &NodeStmtPutChar) {
+        self.gen_expression(&putchar_stmt.expression);
 
+        self.asm.push_str("    mov rax, 1\n");
+        self.asm.push_str("    mov edi, 1\n");
+        self.asm.push_str("    mov rsi, rsp\n");
+        self.asm.push_str("    mov rdx, 1\n");
+
+        self.asm.push_str("    syscall\n");
+        self.asm.push_str("    add rsp, 8\n");
     }
 
     fn gen_expression(&mut self, expr: &MathValue) {
@@ -145,8 +159,6 @@ impl CodeGen {
 
                         self.push("rax");
                     },
-
-                    _ => todo!(),
                 }
             },
 
@@ -173,7 +185,7 @@ impl CodeGen {
         let Some(value) = self.variables.get_key_value(&identifier.info) else {
             panic!("Unknown identifier {}", identifier.info);
         };
-    
+
         return *value.1;
     }
 

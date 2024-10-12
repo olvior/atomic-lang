@@ -4,10 +4,13 @@ use crate::exit_message;
 #[derive(PartialEq)]
 #[derive(Clone)]
 pub enum TokenType {
+    // built in functions
     Exit,
+    PutChar,
 
     AssignEq,
 
+    // math
     ParenOpen,
     ParenClose,
     Plus,
@@ -15,6 +18,7 @@ pub enum TokenType {
     Star,
     ForwardsSlash,
 
+    // types
     IntType,
     IntegerLit,
 
@@ -58,6 +62,7 @@ impl Tokeniser {
 
 
                 "exit" => TokenType::Exit,
+                "putchar" => TokenType::PutChar,
 
                 "int" => TokenType::IntType,
 
