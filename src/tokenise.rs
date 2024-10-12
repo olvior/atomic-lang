@@ -97,26 +97,47 @@ impl Tokeniser {
     fn get_next_word(&mut self) -> Option<String> {
         self.skip_whitespace();
 
-        let first_char = self.source.chars().nth(self.index).expect("Could not index string!");
-        let mut word = String::new();
+        if self.index >= self.source.len() {
+            return None;
+        }
 
+        let first_char = self.source.chars().nth(self.index).expect("Could not index string!");
+
+        let second_char = self.source.chars().nth(self.index + 1);
+
+        // `//` comment testing
+        if second_char.is_some() {
+            if second_char.expect("Internal error") == '/' && first_char == '/' {
+                // skip the comment until new line
+                while self.index < self.source.len() && self.source.chars().nth(self.index).expect("error") != '\n' {
+                    self.index += 1;
+                }
+                
+                // we didn't get any tokens, we just skipped comment
+                return None;
+            }
+        }
+
+        let mut word = String::from(first_char);
+        self.index += 1;
 
         for c in self.source.get(self.index..).expect("Could not collect source into chars").chars() {
             if first_char.is_alphabetic() {
-                if !c.is_alphanumeric() {
+                if !(c.is_alphanumeric() || ['_', '-'].contains(&c)) {
                     break;
                 }
             }
+
             else if first_char.is_numeric() {
                 if !c.is_numeric() {
                     break;
                 }
             } else {
-                self.index += 1;
-                word.push(c);
-                break;
+                if c != first_char {
+                    break;
+                }
             }
-            
+
             self.index += 1;
             word.push(c);
         }
@@ -125,7 +146,7 @@ impl Tokeniser {
         if word == String::new() {
             return None;
         }
-        
+
 
         self.skip_whitespace();
         return Some(word);
