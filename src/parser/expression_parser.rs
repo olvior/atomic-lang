@@ -1,7 +1,7 @@
 use crate::exit_message;
 use crate::tokenise::{Token, TokenType};
 
-use super::{MathValue, NodeMathAdd, NodeMathSub, NodeMathMult, OperationType};
+use super::{MathValue, NodeMathAdd, NodeMathSub, NodeMathMult, NodeMathDiv, OperationType};
 
 
 struct ExpressionParser {
@@ -46,12 +46,30 @@ impl ExpressionParser {
     fn parse_product(&mut self, tokens: &[Token]) -> MathValue {
         let mut value_1 = self.parse_factor(tokens);
 
-        while self.index < tokens.len() && tokens[self.index].token == TokenType::Star {
+        while self.index < tokens.len()
+        && (tokens[self.index].token == TokenType::Star || tokens[self.index].token == TokenType::ForwardsSlash) {
+
+            let first_token_type = &tokens[self.index].token;
+
             self.index += 1;
+
             let value_2 = self.parse_factor(tokens);
 
-            let add_node = NodeMathMult { value_1, value_2 };
-            let operation = Box::new(OperationType::Mult(add_node));
+            let operation = match first_token_type {
+                TokenType::Star => {
+                    let add_node = NodeMathMult { value_1, value_2 };
+
+                    Box::new(OperationType::Mult(add_node))
+                }
+
+                TokenType::ForwardsSlash => {
+                    let add_node = NodeMathDiv { value_1, value_2 };
+
+                    Box::new(OperationType::Div(add_node))
+                }
+
+                _ => panic!("Error while parsing"),
+            };
             let math_operation = MathValue::Operation(operation);
 
             value_1 = math_operation;

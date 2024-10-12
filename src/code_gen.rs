@@ -130,6 +130,21 @@ impl CodeGen {
 
                         self.push("rax");
                     },
+                    
+                    OperationType::Div(div) => {
+                        self.gen_expression(&div.value_1);
+                        self.gen_expression(&div.value_2);
+
+                        self.asm.push_str("    xor rdx, rdx\n");
+                        
+                        // different order because division is the arg / rax i think
+                        self.pop("rbx");
+                        self.pop("rax");
+
+                        self.asm.push_str("    idiv rbx\n");
+
+                        self.push("rax");
+                    },
 
                     _ => todo!(),
                 }

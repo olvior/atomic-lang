@@ -12,6 +12,7 @@ pub enum OperationType {
     Add(NodeMathAdd),
     Sub(NodeMathSub),
     Mult(NodeMathMult),
+    Div(NodeMathDiv),
 }
 
 #[derive(Debug)]
