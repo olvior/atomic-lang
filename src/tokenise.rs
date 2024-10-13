@@ -11,16 +11,21 @@ pub enum TokenType {
     AssignEq,
 
     // math
-    ParenOpen,
-    ParenClose,
     Plus,
     Minus,
     Star,
     ForwardsSlash,
 
+    ParenOpen,
+    ParenClose,
+    BraceOpen,
+    BraceClose,
+
     // types
     IntType,
     IntegerLit,
+
+    Function,
 
     Identifier,
 
@@ -53,6 +58,8 @@ impl Tokeniser {
                 ";" => TokenType::Semicolon,
                 "(" => TokenType::ParenOpen,
                 ")" => TokenType::ParenClose,
+                "{" => TokenType::BraceOpen,
+                "}" => TokenType::BraceClose,
                 "=" => TokenType::AssignEq,
 
                 "+" => TokenType::Plus,
@@ -65,6 +72,7 @@ impl Tokeniser {
                 "putchar" => TokenType::PutChar,
 
                 "int" => TokenType::IntType,
+                "fn" => TokenType::Function,
 
                 _ => TokenType::NoToken,
             };

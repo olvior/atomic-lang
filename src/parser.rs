@@ -1,3 +1,5 @@
+use std::process::exit;
+
 use crate::{TokenType, Token, exit_message};
 
 mod expression_parser;
@@ -14,6 +16,8 @@ pub enum NodeStatements {
 
     Declare(NodeStmtDeclare),
     Set(NodeStmtSet),
+    
+    Function(NodeStmtFunction),
 }
 
 #[derive(Debug)]
@@ -35,13 +39,20 @@ pub struct NodeStmtPutChar {
 #[derive(Debug)]
 pub struct NodeStmtDeclare {
     pub identifier: Token,
-    pub expression: MathValue,
+    pub expression: Option<MathValue>,
 }
 
 #[derive(Debug)]
 pub struct NodeStmtSet {
     pub identifier: Token,
     pub expression: MathValue,
+}
+
+#[derive(Debug)]
+pub struct NodeStmtFunction {
+    pub identifier: Token,
+    pub args: Vec<NodeStmtDeclare>,
+    pub scope: NodeProgram,
 }
 
 pub struct Parser {
@@ -61,6 +72,7 @@ impl Parser {
                 TokenType::PutChar => NodeStatements::PutChar(self.parse_putchar()),
                 TokenType::IntType => NodeStatements::Declare(self.parse_int_assign()),
                 TokenType::Identifier => NodeStatements::Set(self.parse_set_var()),
+                TokenType::Function => NodeStatements::Function(self.parse_function()),
                 _ => { dbg!(token); exit_message("Invalid expression"); println!("happy"); return program; }
             };
 
@@ -68,6 +80,73 @@ impl Parser {
         }
 
         return program;
+    }
+
+    fn parse_scope(&mut self) -> NodeProgram {
+        if self.require_token(0, "Expected `{` in scope").token != TokenType::BraceOpen {
+            exit_message("Expected `{` in scope");
+        }
+        self.index += 1;
+
+        let start_index = self.index;
+        // the first thing we do is to look for the end of the scope
+        let mut end_index = start_index;
+        let mut brace_count = 1;
+        while end_index < self.tokens.len() {
+            let token = &self.tokens[end_index].token;
+            end_index += 1;
+            if *token == TokenType::BraceOpen {
+                brace_count += 1;
+            } else if *token == TokenType::BraceClose {
+                brace_count -= 1;
+            }
+
+            if brace_count == 0 {
+                break;
+            }
+        }
+
+        if brace_count != 0 {
+            exit_message("Expected closing brace in scope");
+        }
+
+        let new_tokens = self.tokens[start_index..end_index - 1].to_vec();
+
+        let mut new_parser = Parser { tokens: new_tokens, index: 0 };
+
+        let program = new_parser.parse();
+
+        self.index = end_index;
+
+        return program;
+    }
+
+    fn parse_function(&mut self) -> NodeStmtFunction {
+        if self.require_token(1, "Could not parse function").token != TokenType::Identifier {
+            exit_message("Expected identifier");
+        }
+        if self.require_token(2, "Could not parse function").token != TokenType::ParenOpen {
+            exit_message("Expected `(`");
+        }
+        
+        let identifier = self.tokens[self.index + 1].clone();
+
+        // account for: fn test(
+        self.index += 3;
+
+        let mut args: Vec<NodeStmtDeclare> = vec!();
+        while self.require_token(0, "Expected cloing paren").token != TokenType::ParenClose {
+            args.push(self.parse_int_assign());
+        }
+
+        // now we finished all the args
+        // so we call parse scope
+        self.index += 1;
+        let scope = self.parse_scope();
+
+        let function_stmt = NodeStmtFunction { identifier, args, scope };
+
+        return function_stmt;
     }
 
     fn parse_exit(&mut self) -> NodeStmtExit {
@@ -121,11 +200,22 @@ impl Parser {
         if self.require_token(1, "Could not parse declaration").token != TokenType::Identifier {
             exit_message("Expected identifier");
         }
+        let identifier = self.require_token(1, "Could not parse declaration");
+
+        // initial value is optional
         if self.require_token(2, "Could not parse declaration").token != TokenType::AssignEq {
-            exit_message("Expected Equal sign");
+            // it's ok if it doesn't exist
+            // we just mark the expression as None
+            
+            // account for int name
+            self.index += 2;
+            if self.require_token(0, "Could not parse declaration").token != TokenType::Semicolon {
+                exit_message("Expected semicolon");
+            }
+            self.index += 1;
+            return NodeStmtDeclare { identifier, expression: None }
         }
 
-        let identifier = self.require_token(1, "Could not parse declaration");
 
         // account for int name =
         self.index += 3;
@@ -140,7 +230,7 @@ impl Parser {
         // account for ;
         self.index += 1;
 
-        return NodeStmtDeclare { identifier, expression: expr };
+        return NodeStmtDeclare { identifier, expression: Some(expr) };
     }
 
     fn parse_set_var(&mut self) -> NodeStmtSet {

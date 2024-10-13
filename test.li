@@ -1,12 +1,9 @@
 
-// this sets b
-int b = (94 + 5); // 99
-
-// outputs the char: c
-putchar(b);
-
-// newline
-putchar(10);
+// function definition
+fn hello(int a;) { // args are seperated by ;
+    // output 95 + the input arg
+    putchar(a + 95);
+}
 
 exit(0); // exit code 0, success
 

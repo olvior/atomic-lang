@@ -27,10 +27,12 @@ impl CodeGen {
         }
     }
 
-    pub fn generate(&mut self, ast: &NodeProgram) {
-        
-        self.asm.push_str("    push rsp\n");
-        
+    pub fn generate(&mut self, ast: &NodeProgram, first: bool) {
+
+        if first {
+            self.asm.push_str("    push rsp\n");
+        }
+
         for stmt in &ast.statements {
             match stmt {
                 NodeStatements::Declare(declare_stmt) => {
@@ -46,14 +48,16 @@ impl CodeGen {
                     self.gen_set(&set_stmt);
                 },
 
-                //_ => { println!("Unable to generate code for {:?}", stmt) }
+                _ => { println!("Unable to generate code for {:?}", stmt) }
             }
         }
         
 
-        self.asm.push_str("    mov rax, 60\n");
-        self.asm.push_str("    mov rdi, 0\n");
-        self.asm.push_str("    syscall\n");
+        if first {
+            self.asm.push_str("    mov rax, 60\n");
+            self.asm.push_str("    mov rdi, 0\n");
+            self.asm.push_str("    syscall\n");
+        }
     }
 
     fn gen_declare(&mut self, declare_stmt: &NodeStmtDeclare) {
@@ -63,7 +67,12 @@ impl CodeGen {
 
         self.variables.insert(declare_stmt.identifier.info.clone(), self.stack_ptr + 1);
 
-        self.gen_expression(&declare_stmt.expression);
+        if let Some(expression) = &declare_stmt.expression {
+            self.gen_expression(expression);
+        } else {
+            // we'll just give it a value of 0
+            self.push("0");
+        }
 
     }
 
@@ -88,7 +97,7 @@ impl CodeGen {
 
         self.asm.push_str("    syscall\n");
     }
-    
+
     fn gen_putchar(&mut self, putchar_stmt: &NodeStmtPutChar) {
         self.gen_expression(&putchar_stmt.expression);
 

@@ -178,7 +178,7 @@ fn main() {
     dbg!(&parse_tree);
 
     let mut generator = CodeGen::new();
-    generator.generate(&parse_tree);
+    generator.generate(&parse_tree, true);
     let asm = &generator.asm;
     print!("{}", asm);
 
