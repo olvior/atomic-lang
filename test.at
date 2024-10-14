@@ -1,9 +1,17 @@
 
 // function definition
-fn hello(int a;) { // args are seperated by ;
+fn hello() { // args are seperated by ;
+    int a = 5;
     // output 95 + the input arg
     putchar(a + 95);
 }
+
+hello();
+hello();
+hello();
+hello();
+
+putchar(10);
 
 exit(0); // exit code 0, success
 

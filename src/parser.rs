@@ -1,3 +1,4 @@
+use core::panic;
 use std::process::exit;
 
 use crate::{TokenType, Token, exit_message};
@@ -18,6 +19,7 @@ pub enum NodeStatements {
     Set(NodeStmtSet),
     
     Function(NodeStmtFunction),
+    FunctionCall(NodeStmtFunctionCall),
 }
 
 #[derive(Debug)]
@@ -55,6 +57,12 @@ pub struct NodeStmtFunction {
     pub scope: NodeProgram,
 }
 
+#[derive(Debug)]
+pub struct NodeStmtFunctionCall {
+    pub identifier: Token,
+    pub args: Vec<NodeStmtDeclare>,
+}
+
 pub struct Parser {
     pub tokens: Vec<Token>,
     pub index: usize,
@@ -71,7 +79,17 @@ impl Parser {
                 TokenType::Exit => NodeStatements::Exit(self.parse_exit()),
                 TokenType::PutChar => NodeStatements::PutChar(self.parse_putchar()),
                 TokenType::IntType => NodeStatements::Declare(self.parse_int_assign()),
-                TokenType::Identifier => NodeStatements::Set(self.parse_set_var()),
+                TokenType::Identifier => {
+                    if self.index + 1 >= self.tokens.len() {
+                        panic!("Expected something after identifier");
+                    }
+
+                    if self.tokens[self.index+1].token == TokenType::ParenOpen {
+                        NodeStatements::FunctionCall(self.parse_func_call())
+                    } else {
+                        NodeStatements::Set(self.parse_set_var())
+                    }
+                },
                 TokenType::Function => NodeStatements::Function(self.parse_function()),
                 _ => { dbg!(token); exit_message("Invalid expression"); println!("happy"); return program; }
             };
@@ -147,6 +165,28 @@ impl Parser {
         let function_stmt = NodeStmtFunction { identifier, args, scope };
 
         return function_stmt;
+    }
+
+    fn parse_func_call(&mut self) -> NodeStmtFunctionCall {
+        if self.require_token(1, "Could not parse function").token != TokenType::ParenOpen {
+            exit_message("Expected `(`");
+        }
+        if self.require_token(2, "Could not parse function").token != TokenType::ParenClose {
+            exit_message("Expected `_`");
+        }
+        if self.require_token(3, "Could not parse function").token != TokenType::Semicolon {
+            exit_message("Expected `;`");
+        }
+
+        let identifier = self.tokens[self.index].clone();
+        let args = vec!();
+
+        // account for: test();
+        self.index += 4;
+
+        let function_call_stmt = NodeStmtFunctionCall { identifier, args };
+
+        return function_call_stmt;
     }
 
     fn parse_exit(&mut self) -> NodeStmtExit {

@@ -56,7 +56,7 @@ fn collect_settings() -> Settings {
     }
 
     if arguments.len() < 1 {
-        exit_message("Useage: ./lithium path/to/file.li");
+        exit_message(&format!("Useage: {} path/to/file.at", args[0]));
     }
 
     dbg!(&arguments);
@@ -178,9 +178,7 @@ fn main() {
     dbg!(&parse_tree);
 
     let mut generator = CodeGen::new();
-    generator.generate(&parse_tree, true);
-    let asm = &generator.asm;
-    print!("{}", asm);
+    let asm = &generator.gen_output(&parse_tree);
 
     write_out(&settings, asm);
 
