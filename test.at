@@ -1,9 +1,16 @@
+int hi = 72;
 
-// function definition
-fn hello() { // args are seperated by ;
+fn hello() {
     int a = 5;
-    // output 95 + the input arg
+
     putchar(a + 95);
+
+    fn bye() {
+        putchar(hi);
+    }
+
+    bye();
+    bye();
 }
 
 hello();

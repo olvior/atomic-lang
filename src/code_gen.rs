@@ -73,23 +73,28 @@ impl CodeGen {
 
 
     fn gen_function(&mut self, func_stmt: &NodeStmtFunction) {
+        // when the function gets called return address is pushed onto the stack
+        self.stack_ptr += 1;
+
         self.functions.push(func_stmt.identifier.info.clone());
 
         let identifier: &str = &func_stmt.identifier.info;
-        let mut assembly = format!("fn_{}:\n", identifier);
+        let mut assembly = format!("; function definition\nfn_{}:\n", identifier);
 
-        let scope_asm = self.gen_scope(&func_stmt.scope);
+        let scope_asm = self.gen_scope(&func_stmt.scope, "    ret\n");
 
         assembly.push_str(&scope_asm);
-        assembly.push_str("    ret\n");
 
 
         self.post_asm.push_str(&assembly);
+
+        // the return then resets the stack
+        self.stack_ptr -= 1;
     }
 
-    fn gen_scope(&mut self, program: &NodeProgram) -> String {
+    fn gen_scope(&mut self, program: &NodeProgram, end_str: &str) -> String {
         let mut new_generator = CodeGen {
-            stack_ptr: -1,
+            stack_ptr: self.stack_ptr,
             asm: String::new(),
             post_asm: String::new(),
             variables: self.variables.clone(),
@@ -100,6 +105,7 @@ impl CodeGen {
 
         new_generator.asm.push_str("    ; fix stack pointer\n");
         new_generator.add_stack_pointer(new_generator.stack_ptr - self.stack_ptr);
+        new_generator.asm.push_str(end_str);
 
         return new_generator.asm + &new_generator.post_asm;
     }
@@ -142,8 +148,10 @@ impl CodeGen {
     }
 
     fn gen_exit(&mut self, exit_stmt: &NodeStmtExit) {
+        self.asm.push_str("    ; generating exit value\n");
         self.gen_expression(&exit_stmt.expression);
 
+        self.asm.push_str("    ; exiting\n");
         self.asm.push_str("    mov rax, 60\n");
         self.pop("rdi");
 
@@ -151,9 +159,10 @@ impl CodeGen {
     }
 
     fn gen_putchar(&mut self, putchar_stmt: &NodeStmtPutChar) {
-        self.asm.push_str("    ; put char\n");
+        self.asm.push_str("    ; put char expression\n");
         self.gen_expression(&putchar_stmt.expression);
 
+        self.asm.push_str("    ; put char syscall\n");
         self.asm.push_str("    mov rax, 1\n");
         self.asm.push_str("    mov edi, 1\n");
         self.asm.push_str("    mov rsi, rsp\n");
@@ -264,7 +273,7 @@ impl CodeGen {
     fn push_var_value(&mut self, identifier: &Token) {
         let var_ptr = self.get_var_ptr(&identifier);
         self.asm.push_str(&format!("    mov rax, QWORD [rsp + {}]\n", (self.stack_ptr - var_ptr) * 8));
-        
+
         self.push("rax");
     }
 }
