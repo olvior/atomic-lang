@@ -1,7 +1,4 @@
-use core::panic;
-use std::process::exit;
-
-use crate::{TokenType, Token, exit_message};
+use crate::{errors::Error, exit_message, Token, TokenType};
 
 mod expression_parser;
 
@@ -69,41 +66,38 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn parse(&mut self) -> NodeProgram {
+    pub fn parse(&mut self) -> Result<NodeProgram, Error> {
         let mut program = NodeProgram { statements: vec!() };
 
         while self.index < self.tokens.len() {
             let token = &self.tokens[self.index];
 
             let statement = match token.token {
-                TokenType::Exit => NodeStatements::Exit(self.parse_exit()),
-                TokenType::PutChar => NodeStatements::PutChar(self.parse_putchar()),
-                TokenType::IntType => NodeStatements::Declare(self.parse_int_assign()),
+                TokenType::Exit => NodeStatements::Exit(self.parse_exit()?),
+                TokenType::PutChar => NodeStatements::PutChar(self.parse_putchar()?),
+                TokenType::IntType => NodeStatements::Declare(self.parse_int_assign()?),
                 TokenType::Identifier => {
-                    if self.index + 1 >= self.tokens.len() {
-                        panic!("Expected something after identifier");
-                    }
-
-                    if self.tokens[self.index+1].token == TokenType::ParenOpen {
-                        NodeStatements::FunctionCall(self.parse_func_call())
+                    if self.require_token(1, TokenType::ParenOpen).is_ok() {
+                        NodeStatements::FunctionCall(self.parse_func_call()?)
                     } else {
-                        NodeStatements::Set(self.parse_set_var())
+                        NodeStatements::Set(self.parse_set_var()?)
                     }
                 },
-                TokenType::Function => NodeStatements::Function(self.parse_function()),
-                _ => { dbg!(token); exit_message("Invalid expression"); println!("happy"); return program; }
+                TokenType::Function => NodeStatements::Function(self.parse_function()?),
+                _ => { 
+                    return Err ( Error { line: token.line, msg: format!("Expected a valid statement, found {}", token.info) })
+                }
             };
 
             program.statements.push(statement);
         }
 
-        return program;
+        Ok( program )
     }
 
-    fn parse_scope(&mut self) -> NodeProgram {
-        if self.require_token(0, "Expected `{` in scope").token != TokenType::BraceOpen {
-            exit_message("Expected `{` in scope");
-        }
+    fn parse_scope(&mut self) -> Result<NodeProgram, Error> {
+        let _brace = self.require_token(0, TokenType::BraceOpen)?;
+
         self.index += 1;
 
         let start_index = self.index;
@@ -125,7 +119,7 @@ impl Parser {
         }
 
         if brace_count != 0 {
-            exit_message("Expected closing brace in scope");
+            return Err( Error { line: self.tokens.last().unwrap().line, msg: "Expected closing brace `}`, the issue may potentially be earlier".to_string() })
         }
 
         let new_tokens = self.tokens[start_index..end_index - 1].to_vec();
@@ -139,44 +133,32 @@ impl Parser {
         return program;
     }
 
-    fn parse_function(&mut self) -> NodeStmtFunction {
-        if self.require_token(1, "Could not parse function").token != TokenType::Identifier {
-            exit_message("Expected identifier");
-        }
-        if self.require_token(2, "Could not parse function").token != TokenType::ParenOpen {
-            exit_message("Expected `(`");
-        }
+    fn parse_function(&mut self) -> Result<NodeStmtFunction, Error> {
+        let identifier = self.require_token(1, TokenType::NoToken)?;
+        let _paren = self.require_token(2, TokenType::ParenOpen)?;
         
-        let identifier = self.tokens[self.index + 1].clone();
-
         // account for: fn test(
         self.index += 3;
 
         let mut args: Vec<NodeStmtDeclare> = vec!();
-        while self.require_token(0, "Expected cloing paren").token != TokenType::ParenClose {
-            args.push(self.parse_int_assign());
+        while self.require_token(0, TokenType::ParenClose).is_err() {
+            args.push(self.parse_int_assign()?);
         }
 
         // now we finished all the args
         // so we call parse scope
         self.index += 1;
-        let scope = self.parse_scope();
+        let scope = self.parse_scope()?;
 
         let function_stmt = NodeStmtFunction { identifier, args, scope };
 
-        return function_stmt;
+        Ok( function_stmt )
     }
 
-    fn parse_func_call(&mut self) -> NodeStmtFunctionCall {
-        if self.require_token(1, "Could not parse function").token != TokenType::ParenOpen {
-            exit_message("Expected `(`");
-        }
-        if self.require_token(2, "Could not parse function").token != TokenType::ParenClose {
-            exit_message("Expected `_`");
-        }
-        if self.require_token(3, "Could not parse function").token != TokenType::Semicolon {
-            exit_message("Expected `;`");
-        }
+    fn parse_func_call(&mut self) -> Result<NodeStmtFunctionCall, Error> {
+        let _paren = self.require_token(1, TokenType::ParenOpen)?;
+        let _paren = self.require_token(2, TokenType::ParenClose)?;
+        let _semi  = self.require_token(3, TokenType::Semicolon)?;
 
         let identifier = self.tokens[self.index].clone();
         let args = vec!();
@@ -186,117 +168,94 @@ impl Parser {
 
         let function_call_stmt = NodeStmtFunctionCall { identifier, args };
 
-        return function_call_stmt;
+        Ok( function_call_stmt )
     }
 
-    fn parse_exit(&mut self) -> NodeStmtExit {
-        if self.require_token(1, "Could not parse exit").token != TokenType::ParenOpen {
-            exit_message("Expected parenthesis");
-        }
+    fn parse_exit(&mut self) -> Result<NodeStmtExit, Error> {
+        let _paren = self.require_token(1, TokenType::ParenOpen)?;
 
         // account for exit(
         self.index += 2;
 
-        let expr = self.parse_expr();
+        let expr = self.parse_expr()?;
         
-        if self.require_token(0, "Could not parse exit").token != TokenType::ParenClose {
-            exit_message("Expected closing parenthesis");
-        }
-        if self.require_token(1, "Could not parse exit").token != TokenType::Semicolon {
-            exit_message("Expected semicolon");
-        }
+        let _paren = self.require_token(0, TokenType::ParenClose)?;
+        let _semi = self.require_token(1, TokenType::Semicolon)?;
 
         // account for );
         self.index += 2;
 
-        return NodeStmtExit { expression: expr };
+        Ok( NodeStmtExit { expression: expr } )
     }
     
-    fn parse_putchar(&mut self) -> NodeStmtPutChar {
-        if self.require_token(1, "Could not parse putchar").token != TokenType::ParenOpen {
-            exit_message("Expected parenthesis");
-        }
+    fn parse_putchar(&mut self) -> Result<NodeStmtPutChar, Error> {
+        let _paren = self.require_token(1, TokenType::ParenOpen)?;
 
         // account for putchar(
         self.index += 2;
 
-        let expr = self.parse_expr();
+        let expr = self.parse_expr()?;
         
-        if self.require_token(0, "Could not parse putchar").token != TokenType::ParenClose {
-            exit_message("Expected closing parenthesis");
-        }
-        if self.require_token(1, "Could not parse putchar").token != TokenType::Semicolon {
-            exit_message("Expected semicolon");
-        }
+        let _paren = self.require_token(0, TokenType::ParenClose)?;
+        let _semi = self.require_token(1, TokenType::Semicolon)?;
 
         // account for );
         self.index += 2;
 
-        return NodeStmtPutChar { expression: expr };
+        Ok( NodeStmtPutChar { expression: expr } )
     }
     
     
-    fn parse_int_assign(&mut self) -> NodeStmtDeclare {
-        if self.require_token(1, "Could not parse declaration").token != TokenType::Identifier {
-            exit_message("Expected identifier");
-        }
-        let identifier = self.require_token(1, "Could not parse declaration");
+    fn parse_int_assign(&mut self) -> Result<NodeStmtDeclare, Error> {
+        let identifier = self.require_token(1, TokenType::Identifier)?;
 
         // initial value is optional
-        if self.require_token(2, "Could not parse declaration").token != TokenType::AssignEq {
+        if self.require_token(2, TokenType::AssignEq).is_err() {
             // it's ok if it doesn't exist
             // we just mark the expression as None
             
             // account for int name
             self.index += 2;
-            if self.require_token(0, "Could not parse declaration").token != TokenType::Semicolon {
-                exit_message("Expected semicolon");
-            }
+
+            let _semi_colon = self.require_token(0, TokenType::Semicolon)?;
+
             self.index += 1;
-            return NodeStmtDeclare { identifier, expression: None }
+            return Ok( NodeStmtDeclare { identifier, expression: None } );
         }
 
 
         // account for int name =
         self.index += 3;
 
-        let expr = self.parse_expr();
+        let expr = self.parse_expr()?;
 
 
-        if self.require_token(0, "Could not parse declaration").token != TokenType::Semicolon {
-            exit_message("Expected semicolon");
-        }
+        let _semi_colon = self.require_token(0, TokenType::Semicolon)?;
 
         // account for ;
         self.index += 1;
 
-        return NodeStmtDeclare { identifier, expression: Some(expr) };
+        Ok( NodeStmtDeclare { identifier, expression: Some(expr) } )
     }
 
-    fn parse_set_var(&mut self) -> NodeStmtSet {
-        if self.require_token(1, "Could not parse set").token != TokenType::AssignEq {
-            exit_message("Expected equal sign");
-        }
-
-        let identifier = self.require_token(0, "Could not parse set");
+    fn parse_set_var(&mut self) -> Result<NodeStmtSet, Error> {
+        let _equal_sign = self.require_token(0, TokenType::AssignEq)?;
+        let identifier = self.require_token(1, TokenType::NoToken)?;
 
         // account for name =
         self.index += 2;
 
-        let expr = self.parse_expr();
+        let expr = self.parse_expr()?;
         
-        if self.require_token(0, "Could not parse set").token != TokenType::Semicolon {
-            exit_message("Expected semicolon");
-        }
-
+        let _semi_colon = self.require_token(0, TokenType::Semicolon)?;
         // account for ;
         self.index += 1;
 
-        return NodeStmtSet { identifier, expression: expr };
+        Ok( NodeStmtSet { identifier, expression: expr } )
     }
 
 
-    fn parse_expr(&mut self) -> MathValue {
+    fn parse_expr(&mut self) -> Result<MathValue, Error> {
         let min_index = self.index;
 
         let mut parens = 0;
@@ -315,14 +274,31 @@ impl Parser {
         let max_index = self.index;
 
         let expression_slice = &self.tokens[min_index..max_index];
+
+        if expression_slice.len() == 0 {
+            return Err ( Error { line: self.tokens[self.index].line, msg: "Expression is empty".to_string() } )
+        }
         
         let math_value = expression_parser::parse_expression(expression_slice);
         
         return math_value;
     }
 
-    fn require_token(&self, offset: usize, message: &str) -> Token {
-        return self.tokens.get(self.index + offset).expect(message).clone();
+    /// Returns the token at an offset and makes sure it is of a certain type, use
+    /// `TokenType::NoToken` to allow for any type
+    fn require_token(&self, offset: usize, token_type: TokenType) -> Result<Token, Error> {
+        if let Some(token) = self.tokens.get(self.index + offset) {
+            if token_type == TokenType::NoToken {
+                return Ok(token.clone())
+            }
+            if token.token != token_type {
+                return Err( Error { line: token.line, msg: format!("Expected {:?}, found {:?}", token_type, token.token) });
+            }
+            
+            Ok(token.clone())
+        } else {
+            Err( Error { line: self.tokens.last().expect("Empty file").line, msg: format!("Expected another token") })
+        }
     }
 }
 

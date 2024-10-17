@@ -1,4 +1,8 @@
-use crate::exit_message;
+use crate::{
+    errors::Error,
+    dbg_m
+};
+
 
 #[derive(Debug)]
 #[derive(PartialEq)]
@@ -39,20 +43,33 @@ pub enum TokenType {
 pub struct Token {
     pub token: TokenType,
     pub info: String,
+    pub line: usize,
 }
 
 pub struct Tokeniser {
-    pub source: String,
-    pub index: usize,
+    source: String,
+    debug: bool,
+    index: usize,
+    line_num: usize,
 }
 
 impl Tokeniser {
-    pub fn tokenise(&mut self) -> Vec<Token> {
+    pub fn new(source: String, debug: bool) -> Tokeniser {
+        Tokeniser {
+            source,
+            debug,
+            index: 0,
+            line_num: 1,
+        }
+    }
+
+    pub fn tokenise(&mut self) -> Result<Vec<Token>, Error> {
         let mut tokens: Vec<Token> = vec!();
 
         while self.index < self.source.len() {
             let Some(current_word) = self.get_next_word() else { self.index += 1; continue; };
-            println!("{}", current_word);
+            
+            dbg_m(&current_word, self.debug);
 
             let mut token_type = match current_word.as_str() {
                 ";" => TokenType::Semicolon,
@@ -84,20 +101,30 @@ impl Tokeniser {
                     token_type = TokenType::Identifier;
                 }
                 else {
-                    exit_message(&format!("Could not tokenise {}", current_word));
+                    let err = self.create_err(format!("Could not tokenise {}", current_word));
+
+                    return Err(err);
                 }
             }
 
-            tokens.push(Token { token: token_type, info: current_word });
+            tokens.push(Token { token: token_type, info: current_word, line: self.line_num });
         }
 
-        return tokens;
+        return Ok(tokens);
+    }
+
+    fn create_err(&self, msg: String) -> Error {
+        Error { line: self.line_num, msg }
     }
 
     fn skip_whitespace(&mut self) {
         while  self.index < self.source.len()
             && self.source.chars().nth(self.index).expect("Failed to get string").is_whitespace()
         {
+            if self.source.chars().nth(self.index).unwrap() == '\n' {
+                self.line_num += 1;
+            }
+
             self.index += 1;
         }
     }
@@ -156,7 +183,6 @@ impl Tokeniser {
         }
 
 
-        self.skip_whitespace();
         return Some(word);
     }
 }

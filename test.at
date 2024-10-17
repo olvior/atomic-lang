@@ -1,7 +1,7 @@
-int hi = 72;
+int hi = 102;
 
 fn hello() {
-    int a = 5;
+    int a = 10;
 
     putchar(a + 95);
 
